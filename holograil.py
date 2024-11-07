@@ -1,13 +1,46 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget, QLineEdit, QPushButton, QFileDialog, QSpinBox, QMessageBox, QButtonGroup
+from PyQt5.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QLabel,
+    QVBoxLayout,
+    QWidget,
+    QLineEdit,
+    QPushButton,
+    QFileDialog,
+    QSpinBox,
+    QMessageBox,
+    QButtonGroup,
+    QSpacerItem,
+    QSizePolicy,
+)
 from PyQt5.QtGui import QColor, QIcon, QFont, QMovie
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QPalette, QDragEnterEvent, QDropEvent, QLinearGradient, QPalette, QLinearGradient, QColor, QBrush, QPixmap
+from PyQt5.QtGui import (
+    QPalette,
+    QDragEnterEvent,
+    QDropEvent,
+    QLinearGradient,
+    QPalette,
+    QLinearGradient,
+    QColor,
+    QBrush,
+    QPixmap,
+)
 from PIL import Image, ImageSequence
 import sys
 import time
 from datetime import datetime
-from PyQt5.QtWidgets import QDialog, QLabel, QVBoxLayout, QLineEdit, QPushButton, QApplication, QHBoxLayout
+from PyQt5.QtWidgets import (
+    QDialog,
+    QLabel,
+    QVBoxLayout,
+    QLineEdit,
+    QPushButton,
+    QApplication,
+    QHBoxLayout,
+    QFrame,
+)
 import shutil
 
 import asyncio
@@ -20,11 +53,11 @@ import requests
 class NumberOfCopiesDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        
+
         self.setWindowTitle("Holograil")
         self.setFixedSize(350, 160)
         self.setStyleSheet("background-color:white; border: 0px")
-        
+
         # Add the instruction label
         self.instructions_label = QLabel("Number of copies of image to be saved:", self)
         self.instructions_label.setAlignment(Qt.AlignCenter)
@@ -37,7 +70,7 @@ class NumberOfCopiesDialog(QDialog):
             """
         )
         self.instructions_label.setGeometry(10, 15, 340, 40)
-        
+
         # Add the copynumber input field (using QSpinBox now)
         self.copies_input = QSpinBox(self)
         self.copies_input.setValue(1)
@@ -56,7 +89,7 @@ class NumberOfCopiesDialog(QDialog):
             """
         )
         self.copies_input.setGeometry(20, 60, 310, 30)
-        
+
         # Add the okay button
         self.ok_button = QPushButton("OK", self)
         self.ok_button.clicked.connect(self.accept)
@@ -72,7 +105,7 @@ class NumberOfCopiesDialog(QDialog):
             """
         )
         self.ok_button.setGeometry(260, 100, 50, 30)
-        
+
         # Add the cancel button
         self.cancel_button = QPushButton("Cancel", self)
         self.cancel_button.clicked.connect(self.reject)
@@ -88,18 +121,79 @@ class NumberOfCopiesDialog(QDialog):
             """
         )
         self.cancel_button.setGeometry(180, 100, 70, 30)
-        
+
     def get_number_of_copies(self):
         try:
             return int(self.copies_input.text())
         except ValueError:
             return None
 
+
+class ImageCountNumberComponent(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.num_copies = 1  # Default number of copies
+        self.build_widgets()
+        self.build_layout()
+
+    def build_widgets(self):
+        self.decrement_button = QPushButton(
+            text="-", styleSheet="background-color:white;color:black"
+        )
+        self.decrement_button.setFixedSize(32, 32)
+        self.num_copies_label = QLabel(str(self.num_copies))
+        self.num_copies_label.setFixedSize(32, 32)
+        self.increment_button = QPushButton(
+            text="+", styleSheet="background-color:white;color:black"
+        )
+        self.increment_button.setFixedSize(32, 32)
+
+    def build_layout(self):
+        # Set the background color to white
+        self.container = QFrame()
+        self.container.setStyleSheet("background-color: white")
+
+        # Connect to a method to handle decrement, increment
+        self.decrement_button.clicked.connect(self.decrement_copies)
+        self.increment_button.clicked.connect(self.increment_copies)
+
+        # Create a horizontal layout
+        hbox_layout = QHBoxLayout(self.container)
+
+        # Add the buttons and label to the layout
+        hbox_layout.addSpacerItem(
+            QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        )
+        hbox_layout.addWidget(self.decrement_button)
+        hbox_layout.addWidget(self.num_copies_label)
+        hbox_layout.addWidget(self.increment_button)
+        hbox_layout.addSpacerItem(
+            QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        )
+        hbox_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
+        hbox_layout.setSpacing(0)
+
+        lay = QVBoxLayout(self)
+        lay.addWidget(self.container)
+
+    def decrement_copies(self):
+        if self.num_copies > 1:  # Ensure the number of copies does not go below 1
+            self.num_copies -= 1
+            self.num_copies_label.setText(
+                str(self.num_copies)
+            )  # Update the label to reflect the new number
+
+    def increment_copies(self):
+        self.num_copies += 1  # Increment the number of copies
+        self.num_copies_label.setText(
+            str(self.num_copies)
+        )  # Update the label to reflect the new number
+
+
 class DropArea(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.gif_movie = QMovie(None)
-        self.num_copies = 1  # Default number of copies
         self.folder = "D:\\"  # Default self.folder path
         self.processed_image = None
         self.num_frames = 1
@@ -128,67 +222,12 @@ class DropArea(QWidget):
         button_layout.addWidget(self.gif_button)
         main_layout.addLayout(button_layout)  # Add the button layout to the main layout
 
-        # 2nd Layout: Additional button (you can customize the button text and functionality)
-        additional_button_layout = QHBoxLayout()
-        additional_button_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
-        additional_button_layout.setSpacing(0)
-        # Create the decrement button
-        self.decrement_button = QPushButton("-", self)
-        self.decrement_button.setFixedSize(32, 32)
-        self.decrement_button.setStyleSheet(
-            """
-            QPushButton {
-                font-size: 16px;
-                font-weight: bold;
-                color: #000000;
-                background-color: #FFFFFF;
-                border: 1px solid #DDDDDD;
-                border-radius: 5px;
-            }
-            """
-        )
-        self.decrement_button.clicked.connect(self.decrement_copies)  # Connect to a method to handle decrement
-
-        # Create the label to display the number of copies
-        self.num_copies_label = QLabel(str(self.num_copies), self)  # Initialize with the default number of copies
-        self.num_copies_label.setFixedSize(32, 32)
-        self.num_copies_label.setStyleSheet(
-            """
-            QLabel {
-                font-size: 16px;
-                color: #000000;
-                background-color: #FFFFFF;
-                border: 1px solid #DDDDDD;
-                border-radius: 5px;
-            }
-            """
-        )
-
-        # Create the increment button
-        self.increment_button = QPushButton("+", self)
-        self.increment_button.setFixedSize(32, 32)
-        self.increment_button.setStyleSheet(
-            """
-            QPushButton {
-                font-size: 16px;
-                font-weight: bold;
-                color: #000000;
-                background-color: #FFFFFF;
-                border: 1px solid #DDDDDD;
-                border-radius: 5px;
-            }
-            """
-        )
-        self.increment_button.clicked.connect(self.increment_copies)  # Connect to a method to handle increment
-
-        # Add the buttons and label to the layout
-        additional_button_layout.addWidget(self.decrement_button)
-        additional_button_layout.addWidget(self.num_copies_label)
-        additional_button_layout.addWidget(self.increment_button)
+        ### ImageCountNumberComponent
 
         # Add the additional button layout to the main layout
-        main_layout.addLayout(additional_button_layout)  # Add the additional button layout to the main layout
-        
+        main_layout.addWidget(
+            ImageCountNumberComponent()
+        )  # Add the additional button layout to the main layout
 
         # 3rd Layout: Drag and drop area
         self.label = QLabel(
@@ -196,16 +235,21 @@ class DropArea(QWidget):
             Drag and drop 2-3 JPEGs to be processed here.<br><br>
             Processed Image will be saved in: <br><br>
             <a href="desktop_path">{self.folder}</a>
-            """, self
+            """,
+            self,
         )
 
         # Set the initial selection to JPEG
-        self.update_button_styles("JPEG")  # Update styles to reflect the initial selection
-        
+        self.update_button_styles(
+            "JPEG"
+        )  # Update styles to reflect the initial selection
+
         self.label.setOpenExternalLinks(False)  # Prevent default link behavior
-        self.label.setTextInteractionFlags(Qt.TextBrowserInteraction)  # Enable text interaction
+        self.label.setTextInteractionFlags(
+            Qt.TextBrowserInteraction
+        )  # Enable text interaction
         self.label.linkActivated.connect(self.handle_link_activated)
-        
+
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setStyleSheet(
             """
@@ -221,15 +265,6 @@ class DropArea(QWidget):
         main_layout.addWidget(self.label)  # Add the label to the main layout
 
         self.setLayout(main_layout)  # Set the main layout for the DropArea
-
-    def decrement_copies(self):
-        if self.num_copies > 1:  # Ensure the number of copies does not go below 1
-            self.num_copies -= 1
-            self.num_copies_label.setText(str(self.num_copies))  # Update the label to reflect the new number
-
-    def increment_copies(self):
-        self.num_copies += 1  # Increment the number of copies
-        self.num_copies_label.setText(str(self.num_copies))  # Update the label to reflect the new number
 
     def update_button_styles(self, selected_button):
         if selected_button == "JPEG":
@@ -300,7 +335,7 @@ class DropArea(QWidget):
                     height: 32px;
                 }
                 """
-            )     
+            )
             # Update label content for GIF
             self.label.setText(
                 f"""
@@ -321,7 +356,9 @@ class DropArea(QWidget):
                     self.num_copies = 1
                     print("Invalid number of copies")
         elif link == "desktop_path":
-            self.folder = QFileDialog.getExistingDirectory(self, "Select Directory", self.folder)
+            self.folder = QFileDialog.getExistingDirectory(
+                self, "Select Directory", self.folder
+            )
             if self.folder:
                 print(f"Selected directory: {self.folder}")
             else:
@@ -339,22 +376,28 @@ class DropArea(QWidget):
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
             url = event.mimeData().urls()[0]
-            if url.toLocalFile().lower().endswith('.gif') or url.toLocalFile().lower().endswith('.jpg'):
+            if url.toLocalFile().lower().endswith(
+                ".gif"
+            ) or url.toLocalFile().lower().endswith(".jpg"):
                 event.acceptProposedAction()
-                self.label.setStyleSheet(f"background-color: white; border: 2px dashed dimgray; border-radius: 10px; font-family: 'Arial'; font-size: 20px;")
+                self.label.setStyleSheet(
+                    f"background-color: white; border: 2px dashed dimgray; border-radius: 10px; font-family: 'Arial'; font-size: 20px;"
+                )
                 return
         # self.label.setStyleSheet(f"background-color: {QColor(238, 183, 58).name()}; border: 2px dashed dimgray; border-radius: 10px")
         event.ignore()
 
     def dragLeaveEvent(self, event):
-        self.label.setStyleSheet(f"background-color: {QColor(238, 183, 58).name()}; border: 2px dashed dimgray; border-radius: 10px; font-family: 'Arial'; font-size: 20px;")
+        self.label.setStyleSheet(
+            f"background-color: {QColor(238, 183, 58).name()}; border: 2px dashed dimgray; border-radius: 10px; font-family: 'Arial'; font-size: 20px;"
+        )
 
     def updateMovie(self, thread_obj, gif_path):
         self.gif_movie = QMovie(gif_path)
         self.gif_movie.setScaledSize(self.label.size())
         self.label.setMovie(self.gif_movie)
         self.gif_movie.start()
-    
+
     def dropEvent(self, event: QDropEvent):
         file_paths = [url.toLocalFile() for url in event.mimeData().urls()]
         # self.processGif(files[0])
@@ -378,24 +421,42 @@ class DropArea(QWidget):
         left_margin_in = 0.25
         right_margin_in = 0.25
         bottom_margin_in = 0.25
-        
+
         # Start processing in a new thread
-        self.processing_thread = GifProcessingThread(self.label, file_paths, num_copies, folder, lpi, actual_lpi, width_in, height_in, resample_ppi, separator_ratio, separator_color, top_margin_in, left_margin_in, right_margin_in, bottom_margin_in)
+        self.processing_thread = GifProcessingThread(
+            self.label,
+            file_paths,
+            num_copies,
+            folder,
+            lpi,
+            actual_lpi,
+            width_in,
+            height_in,
+            resample_ppi,
+            separator_ratio,
+            separator_color,
+            top_margin_in,
+            left_margin_in,
+            right_margin_in,
+            bottom_margin_in,
+        )
         self.processing_thread.processing_finished.connect(self.on_processing_finished)
         self.processing_thread.update_movie.connect(self.updateMovie)
         self.processing_thread.start()
-    
+
     def reset(self):
         # Stop any GIF animation
-        if hasattr(self, 'gif_movie') and self.gif_movie:
+        if hasattr(self, "gif_movie") and self.gif_movie:
             self.gif_movie.stop()
             self.gif_movie = None
-            delattr(self, 'gif_movie')
-        
+            delattr(self, "gif_movie")
+
         self.setAcceptDrops(True)
-        self.label.setStyleSheet(f"background-color: {QColor(238, 183, 58).name()}; border: 2px dashed dimgray; border-radius: 10px; font-family: 'Arial'; font-size: 20px;")
+        self.label.setStyleSheet(
+            f"background-color: {QColor(238, 183, 58).name()}; border: 2px dashed dimgray; border-radius: 10px; font-family: 'Arial'; font-size: 20px;"
+        )
         # self.setFixedSize(460, 460)
-        
+
         # Reset the label to its original state
         # self.label.clear()
         copy_text = "copy" if self.num_copies == 1 else "copies"
@@ -406,35 +467,41 @@ class DropArea(QWidget):
             <a href="desktop_path">{self.folder}</a>
             """
         )
-        
+
     def on_processing_finished(self, thread_obj, processing_time):
         if thread_obj.isRunning():
-            thread_obj.quit()   # Forcefully stop the thread
-            thread_obj.wait()   # Wait until the thread has completely finished
-    
+            thread_obj.quit()  # Forcefully stop the thread
+            thread_obj.wait()  # Wait until the thread has completely finished
+
         if processing_time != 0:
-            asyncio.run(self.show_notification("GIF Prcessing completed", f"Processed image saved successfully (x{self.num_copies}). Time taken: {processing_time:.2f} seconds."))
-    
+            asyncio.run(
+                self.show_notification(
+                    "GIF Prcessing completed",
+                    f"Processed image saved successfully (x{self.num_copies}). Time taken: {processing_time:.2f} seconds.",
+                )
+            )
+
         self.reset()
-    
+
     async def show_notification(self, title, message):
         try:
             toast = Notification(
-                app_id = "Holograil GIF Image Processor",
-                title = title,
-                msg = message,
-                duration = "long",
-                icon = "C:\\ProgramData\\app_icon.ico"
+                app_id="Holograil GIF Image Processor",
+                title=title,
+                msg=message,
+                duration="long",
+                icon="C:\\ProgramData\\app_icon.ico",
             )
-            toast.add_actions(label="Visit Holograil", launch="https://www.theholograil.com")
+            toast.add_actions(
+                label="Visit Holograil", launch="https://www.theholograil.com"
+            )
             toast.set_audio(audio.Mail, loop=False)
             toast.show()
             # self.show_info_message(title, message)
-            
 
         except Exception as e:
             self.show_error_message(str(e))
-    
+
     def show_error_message(self, error_message):
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Critical)
@@ -443,7 +510,7 @@ class DropArea(QWidget):
         msg_box.setInformativeText(error_message)
         msg_box.setStandardButtons(QMessageBox.Ok)
         msg_box.exec_()
-    
+
     # def show_info_message(self, info_title, info_message):
     #     msg_box = QMessageBox()
     #     msg_box.setIcon(QMessageBox.Information)
@@ -451,14 +518,17 @@ class DropArea(QWidget):
     #     msg_box.setText(info_title)
     #     msg_box.setInformativeText(info_message)
     #     msg_box.exec_()
-        
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.setWindowIcon(QIcon("app_icon.ico"))
+
         self.setWindowTitle("TheGrail")
         self.setGeometry(100, 100, 800, 800)
         self.setFixedSize(800, 800)
-        
+
         # Create central widget and layout
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -467,14 +537,16 @@ class MainWindow(QMainWindow):
         # Remove margins from main layout
         main_layout.setContentsMargins(0, 46, 0, 0)
         main_layout.setSpacing(30)
-        
+
         # Create label for logo
         logo_label = QLabel()
-        pixmap = QPixmap('./resources/logo.png')
-        scaled_pixmap = pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        pixmap = QPixmap("./resources/logo.png")
+        scaled_pixmap = pixmap.scaled(
+            200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
         logo_label.setPixmap(scaled_pixmap)
         logo_label.setAlignment(Qt.AlignCenter)
-        
+
         # Add logo to layout
         main_layout.addWidget(logo_label)
 
@@ -483,18 +555,21 @@ class MainWindow(QMainWindow):
         center_widget = QWidget()
         self.meaning_area_widget = center_widget
         center_layout = QVBoxLayout(center_widget)
-        
+
         # Create a container with background and border
         container = QWidget()
-        container.setStyleSheet("""
+        container.setStyleSheet(
+            """
             QWidget#container {
                 background-color: rgba(88, 130, 193, 0.2);
                 border-radius: 10px;
                 border: 2px solid rgba(88, 130, 193, 0.2);
             }
-        """)
+        """
+        )
         container.setObjectName("container")
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             * {
                 font-family: 'Inter', sans-serif;
             }
@@ -520,36 +595,39 @@ class MainWindow(QMainWindow):
                 background: rgba(255, 255, 255, 0.1);
                 color: white;
             }
-        """)
-        
+        """
+        )
+
         # Create container layout
         container_layout = QVBoxLayout(container)
         container_layout.setSpacing(15)
         container_layout.setContentsMargins(20, 20, 20, 20)
-        
+
         # Add title label
         title_label = QLabel("Software must be activated")
         title_label.setAlignment(Qt.AlignCenter)
         title_label.setStyleSheet("font-size: 24px; font-weight: bold; color: white;")
         container_layout.addWidget(title_label)
-        
+
         # Add input fields
         from PyQt5.QtWidgets import QLineEdit
-        
+
         # Username field
-        xp_label_1 = QLabel("You are using an unregistered version of the software. To activate the software, enter the license key.") 
+        xp_label_1 = QLabel(
+            "You are using an unregistered version of the software. To activate the software, enter the license key."
+        )
         xp_label_1.setStyleSheet("padding: 10px")
-        xp_label_1.setWordWrap(True)  
-        xp_label_1.setFixedWidth(460) 
-        xp_label_4 = QLabel("Internet connection required during activation") 
+        xp_label_1.setWordWrap(True)
+        xp_label_1.setFixedWidth(460)
+        xp_label_4 = QLabel("Internet connection required during activation")
         xp_label_4.setStyleSheet("padding: 10px")
-        xp_label_5 = QLabel("To get the key, copy the hardware ID and contact us") 
+        xp_label_5 = QLabel("To get the key, copy the hardware ID and contact us")
         xp_label_5.setStyleSheet("padding: 10px")
 
         container_layout.addWidget(xp_label_1)
         container_layout.addWidget(xp_label_4)
         container_layout.addWidget(xp_label_5)
-        
+
         # License key field
         key_label = QLabel("License Key:")
         key_label.setStyleSheet("font-weight: bold; color: white;")
@@ -577,93 +655,116 @@ class MainWindow(QMainWindow):
         container_layout.addWidget(hardward_label)
         container_layout.addWidget(hardward_id_label)
         container_layout.addWidget(copy_btn)
-        
+
         # Set fixed size for container
         container.setFixedWidth(500)
         container.setFixedHeight(500)
-        
+
         # Add container to center layout
         center_layout.addWidget(container, 0, Qt.AlignCenter)
-        
+
         # Add center widget to main layout
         main_layout.addWidget(center_widget, 0, Qt.AlignCenter)
 
-        
         # Create horizontal layout for bottom images
         bottom_layout = QHBoxLayout()
-        
+
         # Left image
         left_label = QLabel()
-        left_pixmap = QPixmap('./resources/left.png')
-        scaled_left = left_pixmap.scaled(230, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        left_pixmap = QPixmap("./resources/left.png")
+        scaled_left = left_pixmap.scaled(
+            230, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
         left_label.setPixmap(scaled_left)
-        
+
         # Right image
         right_label = QLabel()
-        right_pixmap = QPixmap('./resources/right.png')
-        scaled_right = right_pixmap.scaled(230, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        right_pixmap = QPixmap("./resources/right.png")
+        scaled_right = right_pixmap.scaled(
+            230, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
         right_label.setPixmap(scaled_right)
-        
+
         # Add images to bottom layout
         bottom_layout.addWidget(left_label)
         bottom_layout.addStretch()  # Add space between images
         bottom_layout.addWidget(right_label)
-        
+
         # Add spacer to push content to top and bottom
         main_layout.addStretch()
-        
+
         # Add bottom layout to main layout
         main_layout.addLayout(bottom_layout)
-        
+
         # Set up the gradient
         self.setup_linear_gradient()
-        
+
         # Create the drop area, initially hidden
         self.drop_area = DropArea(self)
         self.drop_area.move(100, 140)
         self.drop_area.hide()
-        
+
         self.setup_linear_gradient()
-        
+
     def copy_to_clipboard(self):
         clipboard = QApplication.clipboard()
         clipboard.setText(get_mac_address())
-    
+
     def setup_linear_gradient(self):
         gradient = QLinearGradient(0, 0, 0, self.height())
         gradient.setColorAt(0, QColor("#2B4099"))
         gradient.setColorAt(1, QColor("#89CAFF"))
         palette = self.create_gradient_palette(gradient)
         self.setPalette(palette)
-    
+
     def click_next_button(self):
         if self.compare_license(self.license_key_input.text()):
             self.meaning_area_widget.hide()
             self.drop_area.show()
-    
+
     def compare_license(self, input):
         mac_address = get_mac_address()
-        url = 'http://ec2-52-90-200-142.compute-1.amazonaws.com/subscriptions/validate-license'
+        url = "http://ec2-52-90-200-142.compute-1.amazonaws.com/subscriptions/validate-license"
         params = {
-            'license_key': input,
-            'device_address': mac_address,
+            "license_key": input,
+            "device_address": mac_address,
         }
         response = requests.post(url, params=params)
-        
+
         return True
         return response.status_code == 200
-    
+
     def create_gradient_palette(self, gradient):
         palette = QPalette()
         brush = QBrush(gradient)
         palette.setBrush(QPalette.ColorRole.Window, brush)
         return palette
 
+
 class GifProcessingThread(QThread):
-    processing_finished = pyqtSignal(object, float)  # Signal to notify when processing is finished
+    processing_finished = pyqtSignal(
+        object, float
+    )  # Signal to notify when processing is finished
     update_movie = pyqtSignal(object, str)
-    
-    def __init__(self, label, file_paths, num_copies, folder, lpi, actual_lpi, width_in, height_in, resample_ppi, separator_ratio, separator_color, top_margin_in, left_margin_in, right_margin_in, bottom_margin_in):
+
+    def __init__(
+        self,
+        label,
+        file_paths,
+        num_copies,
+        folder,
+        lpi,
+        actual_lpi,
+        width_in,
+        height_in,
+        resample_ppi,
+        separator_ratio,
+        separator_color,
+        top_margin_in,
+        left_margin_in,
+        right_margin_in,
+        bottom_margin_in,
+    ):
         super().__init__()
         self.label = label
         self.file_paths = file_paths
@@ -684,22 +785,22 @@ class GifProcessingThread(QThread):
     def run(self):
         try:
             start_time = time.time()
-            
+
             if len(self.file_paths) == 1:
-                if not self.file_paths[0].lower().endswith('.gif'):
+                if not self.file_paths[0].lower().endswith(".gif"):
                     self.processing_finished.emit(self, 0)
                     return
                 else:
                     self.update_movie.emit(self, self.file_paths[0])
             else:
                 for file_path in self.file_paths:
-                    if file_path.lower().endswith('.gif'):
+                    if file_path.lower().endswith(".gif"):
                         self.processing_finished.emit(self, 0)
                         return
                 self.update_movie.emit(self, self.file_paths[0])
-                
+
             print("Process Started")
-            
+
             # Load GIF
             frames = []
             if len(self.file_paths) == 1:
@@ -715,7 +816,15 @@ class GifProcessingThread(QThread):
 
             # Ensure margins are valid
             max_margin_width = min(self.width_in / 2, self.height_in / 2)
-            if any(m > max_margin_width for m in [self.top_margin_in, self.left_margin_in, self.right_margin_in, self.bottom_margin_in]):
+            if any(
+                m > max_margin_width
+                for m in [
+                    self.top_margin_in,
+                    self.left_margin_in,
+                    self.right_margin_in,
+                    self.bottom_margin_in,
+                ]
+            ):
                 return
 
             # Calculate the new width and height including margins
@@ -732,93 +841,174 @@ class GifProcessingThread(QThread):
 
             # Resize frames to fit within the area excluding the margins and considering LPI adjustment
             interlaced_area_width_px = int(self.width_in * self.resample_ppi)
-            interlaced_area_height_px = int(self.height_in * self.resample_ppi * resize_factor)
+            interlaced_area_height_px = int(
+                self.height_in * self.resample_ppi * resize_factor
+            )
 
             # Create a blank image with the new size
-            interlaced_image = Image.new("RGB", (new_width_px, new_height_px), (255, 255, 255))  # White background for margins
+            interlaced_image = Image.new(
+                "RGB", (new_width_px, new_height_px), (255, 255, 255)
+            )  # White background for margins
 
             # tmp_time = time.time()
             # print(f"Till before step 1 {tmp_time - start_time}seconds elapsed")
-            
+
             # --- Step 1: Add the Mark ---
             # Scale up by number of frames to make the mark height an integer
             # mark_scale_factor = len(frames) * 4
-            mark_scale_factor = 4 if len(frames) == 3 else 2 
+            mark_scale_factor = 4 if len(frames) == 3 else 2
             scaled_new_width_px = new_width_px * mark_scale_factor
             scaled_new_height_px = new_height_px * mark_scale_factor
-            scaled_interlaced_image = interlaced_image.resize((scaled_new_width_px, scaled_new_height_px), Image.LANCZOS)
+            scaled_interlaced_image = interlaced_image.resize(
+                (scaled_new_width_px, scaled_new_height_px), Image.LANCZOS
+            )
 
             # Calculate stripe height and mark height
-            stripe_height = int((1 / self.actual_lpi) * self.resample_ppi / len(frames) * mark_scale_factor)
+            stripe_height = int(
+                (1 / self.actual_lpi)
+                * self.resample_ppi
+                / len(frames)
+                * mark_scale_factor
+            )
             mark_height = int(len(frames) * stripe_height / 2)
 
             # Add the stripe on the scaled image
-            y_offset = int((top_offset_px * mark_scale_factor + (len(frames) * stripe_height / 4))) % (stripe_height * len(frames))
+            y_offset = int(
+                (top_offset_px * mark_scale_factor + (len(frames) * stripe_height / 4))
+            ) % (stripe_height * len(frames))
             for y in range(y_offset, scaled_new_height_px, len(frames) * stripe_height):
-                mark_img = Image.new("RGB", (scaled_new_width_px, mark_height), (0, 0, 0))
+                mark_img = Image.new(
+                    "RGB", (scaled_new_width_px, mark_height), (0, 0, 0)
+                )
                 scaled_interlaced_image.paste(mark_img, (0, y))
 
             # Scale back down to the original size
-            interlaced_image = scaled_interlaced_image.resize((new_width_px, new_height_px), Image.LANCZOS)
+            interlaced_image = scaled_interlaced_image.resize(
+                (new_width_px, new_height_px), Image.LANCZOS
+            )
 
             # print(f"Step 1 spent {time.time() - tmp_time}seconds")
             # tmp_time = time.time()
-            
+
             # --- Step 2: Interlace the Frames ---
             # Scale up by 2 to ensure the stripe height for interlacing is an integer
             # interlace_scale_factor = len(frames)
-            interlace_scale_factor = 1 if len(frames) == 3 else 2 
-            scaled_interlaced_area_width_px = interlaced_area_width_px * interlace_scale_factor
-            scaled_interlaced_area_height_px = interlaced_area_height_px * interlace_scale_factor
-            scaled_interlaced_image = interlaced_image.resize((new_width_px * interlace_scale_factor, new_height_px * interlace_scale_factor), Image.LANCZOS)
+            interlace_scale_factor = 1 if len(frames) == 3 else 2
+            scaled_interlaced_area_width_px = (
+                interlaced_area_width_px * interlace_scale_factor
+            )
+            scaled_interlaced_area_height_px = (
+                interlaced_area_height_px * interlace_scale_factor
+            )
+            scaled_interlaced_image = interlaced_image.resize(
+                (
+                    new_width_px * interlace_scale_factor,
+                    new_height_px * interlace_scale_factor,
+                ),
+                Image.LANCZOS,
+            )
 
-            stripe_height = int((1 / self.actual_lpi) * self.resample_ppi / len(frames) * interlace_scale_factor)
+            stripe_height = int(
+                (1 / self.actual_lpi)
+                * self.resample_ppi
+                / len(frames)
+                * interlace_scale_factor
+            )
 
             interlace_offset = 0
             for i, frame in enumerate(frames):
-                frame_resized = frame.resize((scaled_interlaced_area_width_px, scaled_interlaced_area_height_px), Image.LANCZOS)
+                frame_resized = frame.resize(
+                    (scaled_interlaced_area_width_px, scaled_interlaced_area_height_px),
+                    Image.LANCZOS,
+                )
 
-                for y in range(0, scaled_interlaced_area_height_px, len(frames) * stripe_height):
+                for y in range(
+                    0, scaled_interlaced_area_height_px, len(frames) * stripe_height
+                ):
                     scaled_interlaced_image.paste(
                         frame_resized.crop(
-                            (0, y, scaled_interlaced_area_width_px, y + stripe_height)),
-                        (left_offset_px * interlace_scale_factor, top_offset_px * interlace_scale_factor + y + i * stripe_height)
+                            (0, y, scaled_interlaced_area_width_px, y + stripe_height)
+                        ),
+                        (
+                            left_offset_px * interlace_scale_factor,
+                            top_offset_px * interlace_scale_factor
+                            + y
+                            + i * stripe_height,
+                        ),
                     )
 
             # Scale back down to the original size
-            interlaced_image = scaled_interlaced_image.resize((new_width_px, new_height_px), Image.LANCZOS)
+            interlaced_image = scaled_interlaced_image.resize(
+                (new_width_px, new_height_px), Image.LANCZOS
+            )
 
             # print(f"Step 2 spent {time.time() - tmp_time}seconds")
             # tmp_time = time.time()
-            
+
             # --- Step 3: Add Separators ---
             # Scale up by (separator_ratio + 1) to make the separator height an integer
             # separator_scale_factor = (self.separator_ratio + 1) * len(frames)
-            separator_scale_factor = 1 if len(frames) == 3 else 2 
-            scaled_interlaced_area_width_px = interlaced_area_width_px * separator_scale_factor
-            scaled_interlaced_area_height_px = interlaced_area_height_px * separator_scale_factor
-            scaled_interlaced_image = interlaced_image.resize((new_width_px * separator_scale_factor, new_height_px * separator_scale_factor), Image.LANCZOS)
+            separator_scale_factor = 1 if len(frames) == 3 else 2
+            scaled_interlaced_area_width_px = (
+                interlaced_area_width_px * separator_scale_factor
+            )
+            scaled_interlaced_area_height_px = (
+                interlaced_area_height_px * separator_scale_factor
+            )
+            scaled_interlaced_image = interlaced_image.resize(
+                (
+                    new_width_px * separator_scale_factor,
+                    new_height_px * separator_scale_factor,
+                ),
+                Image.LANCZOS,
+            )
 
-            stripe_height = int((1 / self.actual_lpi) * self.resample_ppi / len(frames) * separator_scale_factor)
+            stripe_height = int(
+                (1 / self.actual_lpi)
+                * self.resample_ppi
+                / len(frames)
+                * separator_scale_factor
+            )
             separator_height = int(stripe_height / (self.separator_ratio + 1))
 
             # print(f"Step 3 spent {time.time() - tmp_time}seconds")
             # tmp_time = time.time()
-            
+
             # Add separators (horizontal lines)
-            for y in range(stripe_height - separator_height, scaled_interlaced_area_height_px, stripe_height):
-                separator_img = Image.new("RGB", (scaled_interlaced_area_width_px, separator_height), self.separator_color)
-                scaled_interlaced_image.paste(separator_img, (left_offset_px * separator_scale_factor, top_offset_px * separator_scale_factor + y))
+            for y in range(
+                stripe_height - separator_height,
+                scaled_interlaced_area_height_px,
+                stripe_height,
+            ):
+                separator_img = Image.new(
+                    "RGB",
+                    (scaled_interlaced_area_width_px, separator_height),
+                    self.separator_color,
+                )
+                scaled_interlaced_image.paste(
+                    separator_img,
+                    (
+                        left_offset_px * separator_scale_factor,
+                        top_offset_px * separator_scale_factor + y,
+                    ),
+                )
 
             # print(f"Add seperator step spent {time.time() - tmp_time}seconds")
             # tmp_time = time.time()
-            
+
             # Scale back down to the original size
-            interlaced_image = scaled_interlaced_image.resize((new_width_px, new_height_px), Image.LANCZOS)
+            interlaced_image = scaled_interlaced_image.resize(
+                (new_width_px, new_height_px), Image.LANCZOS
+            )
 
             # Resize after interlaced process
-            resized_ratio = (new_width_px - 33 * 2) / (self.width_in * self.resample_ppi)
-            new_size = (int(new_width_px * resized_ratio), int(new_height_px * resized_ratio))
+            resized_ratio = (new_width_px - 33 * 2) / (
+                self.width_in * self.resample_ppi
+            )
+            new_size = (
+                int(new_width_px * resized_ratio),
+                int(new_height_px * resized_ratio),
+            )
 
             img_resized = interlaced_image.resize(new_size, Image.LANCZOS)
 
@@ -831,23 +1021,31 @@ class GifProcessingThread(QThread):
 
             # print(f"Resize and crop step spent {time.time() - tmp_time}seconds")
             # tmp_time = time.time()
-            
+
             now = datetime.now().strftime("%d_%m_%Y__%H_%M_%S")
 
             if self.num_copies == 1:
-                img_cropped.save(f"{self.folder}\\{len(frames)}frames_{now}.tiff", format="TIFF", dpi=(self.resample_ppi, self.resample_ppi))
+                img_cropped.save(
+                    f"{self.folder}\\{len(frames)}frames_{now}.tiff",
+                    format="TIFF",
+                    dpi=(self.resample_ppi, self.resample_ppi),
+                )
             elif self.num_copies > 1:
                 for i in range(self.num_copies):
-                    img_cropped.save(f"{self.folder}\\{len(frames)}frames_{now}_{i + 1}.tiff", format="TIFF", dpi=(self.resample_ppi, self.resample_ppi))
+                    img_cropped.save(
+                        f"{self.folder}\\{len(frames)}frames_{now}_{i + 1}.tiff",
+                        format="TIFF",
+                        dpi=(self.resample_ppi, self.resample_ppi),
+                    )
 
             end_time = time.time()
-            processing_time = end_time - start_time        
-            
+            processing_time = end_time - start_time
+
             self.processing_finished.emit(self, processing_time)
-            
+
         except Exception as e:
             self.show_error_message(str(e))
-    
+
     def show_error_message(self, error_message):
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Critical)
@@ -857,13 +1055,14 @@ class GifProcessingThread(QThread):
         msg_box.setStandardButtons(QMessageBox.Ok)
         msg_box.exec_()
 
+
 def main():
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
 
+
 if __name__ == "__main__":
     shutil.copyfile("./app_icon.ico", "C:\\ProgramData\\app_icon.ico")
     main()
- 
