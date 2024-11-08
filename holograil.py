@@ -1,11 +1,13 @@
 import sys
+import logging
+import imghdr
 from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
     QLabel,
     QVBoxLayout,
     QWidget,
-    QLineEdit,
+    QGridLayout,
     QPushButton,
     QFileDialog,
     QSpinBox,
@@ -13,9 +15,10 @@ from PyQt5.QtWidgets import (
     QButtonGroup,
     QSpacerItem,
     QSizePolicy,
+    QFrame,
 )
 from PyQt5.QtGui import QColor, QIcon, QFont, QMovie
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize
 from PyQt5.QtGui import (
     QPalette,
     QDragEnterEvent,
@@ -39,7 +42,6 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QApplication,
     QHBoxLayout,
-    QFrame,
 )
 import shutil
 
@@ -49,6 +51,11 @@ from getmac import get_mac_address
 
 import requests
 
+# Configure the logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s [Thread: %(threadName)s | ID: %(thread)d]'
+)
 
 class NumberOfCopiesDialog(QDialog):
     def __init__(self, parent=None):
@@ -135,23 +142,53 @@ class ImageCountNumberComponent(QWidget):
         self.num_copies = 1  # Default number of copies
         self.build_widgets()
         self.build_layout()
+        self.container.resize(100, 100)
 
     def build_widgets(self):
-        self.decrement_button = QPushButton(
-            text="-", styleSheet="background-color:white;color:black"
+        self.decrement_button = QPushButton(text="-")
+        self.decrement_button.setStyleSheet(
+            """
+                                            QPushButton {
+                                                font-size: 32px;
+                                                color: #2B4099;
+                                                border: 1px solid #FFFFFF;
+                                                border-radius: 8px;
+                                                font-family: 'Arial';
+                                            }
+        """
         )
-        self.decrement_button.setFixedSize(32, 32)
+        # self.decrement_button.setFixedSize(32, 32)
         self.num_copies_label = QLabel(str(self.num_copies))
-        self.num_copies_label.setFixedSize(32, 32)
-        self.increment_button = QPushButton(
-            text="+", styleSheet="background-color:white;color:black"
+        self.num_copies_label.setStyleSheet(
+            """
+                                            QLabel {
+                                                color: #2B4099;
+                                            font-family: 'Arial';
+                                            }
+                                            """
         )
-        self.increment_button.setFixedSize(32, 32)
+        # self.num_copies_label.setFixedSize(32, 32)
+        self.num_copies_label.setAlignment(Qt.AlignCenter)
+        self.increment_button = QPushButton(text="+")
+        self.increment_button.setStyleSheet(
+            """
+                                            QPushButton {
+                                                font-size: 20px;
+                                                color: #2B4099;
+                                                border-radius: 8px;
+                                                font-family: 'Arial';
+                                            }
+        """
+        )
+        # self.increment_button.setFixedSize(32, 32)
 
     def build_layout(self):
         # Set the background color to white
         self.container = QFrame()
-        self.container.setStyleSheet("background-color: white")
+        self.container.setStyleSheet(
+            "background-color: white; border-radius: 5px; color: black"
+        )
+        self.container.setMaximumWidth(200)
 
         # Connect to a method to handle decrement, increment
         self.decrement_button.clicked.connect(self.decrement_copies)
@@ -171,10 +208,11 @@ class ImageCountNumberComponent(QWidget):
             QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
         )
         hbox_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
-        hbox_layout.setSpacing(0)
+        hbox_layout.setSpacing(15)
 
         lay = QVBoxLayout(self)
-        lay.addWidget(self.container)
+        lay.addWidget(self.container, alignment=Qt.AlignCenter)
+        self.container.setFixedHeight(self.container.sizeHint().height())
 
     def decrement_copies(self):
         if self.num_copies > 1:  # Ensure the number of copies does not go below 1
@@ -190,6 +228,54 @@ class ImageCountNumberComponent(QWidget):
         )  # Update the label to reflect the new number
 
 
+class ImagePanel(QWidget):
+    def __init__(self, file_path, max_length=12):
+        super().__init__()
+        self.file_path = file_path
+        self.content = self.truncate_content(file_path.split("/")[-1], max_length)
+        self.build_widgets()
+        self.build_layout()
+
+    def truncate_content(self, content, max_length):
+        if len(content) > max_length:
+            return content[: max_length - 3] + "..."
+        return content
+
+    def build_widgets(self):
+        self.content_label = QLabel(self.content)
+        self.content_label.setFixedSize(110, 50)
+        self.close_btn = QPushButton("X")
+        self.close_btn.setFixedSize(20, 20)
+        self.close_btn.clicked.connect(self.closePanel)
+
+    def build_layout(self):
+        self.container = QFrame()
+        self.container.setStyleSheet(
+            "background-color: #D9D9D9; border-radius: 5px; color: #595959;font-size: 12px; margin: 0; padding:0; border: none"
+        )
+        self.content_label.setStyleSheet("border: none")
+        self.close_btn.setStyleSheet(
+            "font-size:10px; padding:0; margin:0; border: none"
+        )
+        gridbox = QGridLayout(self.container)
+
+        gridbox.addWidget(self.content_label, 0, 0, 2, 1)
+        gridbox.addWidget(self.close_btn, 0, 1, 1, 1)
+        gridbox.setSpacing(0)
+        gridbox.setContentsMargins(0, 0, 0, 0)
+        self.content_label.setAlignment(Qt.AlignCenter)
+
+        lay = QHBoxLayout(self)
+        lay.addStretch(1)
+        lay.addWidget(self.container)
+        self.container.setFixedHeight(self.container.sizeHint().height())
+        self.setMaximumWidth(200)
+
+    def closePanel(self):
+        self.setParent(None)
+        self.deleteLater()
+
+
 class DropArea(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -197,8 +283,8 @@ class DropArea(QWidget):
         self.folder = "D:\\"  # Default self.folder path
         self.processed_image = None
         self.num_frames = 1
+        self.num_copies_comp = ImageCountNumberComponent()
 
-        self.setAcceptDrops(True)
         self.setFixedSize(600, 600)
 
         # Create the main layout for the DropArea
@@ -207,7 +293,9 @@ class DropArea(QWidget):
         # 1st Layout: JPEG and GIF buttons
         button_layout = QHBoxLayout()
         self.jpg_button = QPushButton("JPEG", self)
+        self.jpg_button.setMinimumWidth(200)
         self.gif_button = QPushButton("GIF", self)
+        self.gif_button.setMinimumWidth(200)
 
         # Create a button group to manage the selection
         self.button_group = QButtonGroup(self)  # Create a button group
@@ -218,16 +306,19 @@ class DropArea(QWidget):
         self.jpg_button.clicked.connect(lambda: self.update_button_styles("JPEG"))
         self.gif_button.clicked.connect(lambda: self.update_button_styles("GIF"))
 
+        button_layout.addStretch(1)
         button_layout.addWidget(self.jpg_button)
         button_layout.addWidget(self.gif_button)
+        button_layout.addStretch(1)
         main_layout.addLayout(button_layout)  # Add the button layout to the main layout
 
         ### ImageCountNumberComponent
 
         # Add the additional button layout to the main layout
-        main_layout.addWidget(
-            ImageCountNumberComponent()
-        )  # Add the additional button layout to the main layout
+
+        main_layout.addStretch(1)
+        # Add the additional button layout to the main layout
+        main_layout.addWidget(self.num_copies_comp)
 
         # 3rd Layout: Drag and drop area
         self.label = QLabel(
@@ -238,11 +329,16 @@ class DropArea(QWidget):
             """,
             self,
         )
-
-        # Set the initial selection to JPEG
-        self.update_button_styles(
-            "JPEG"
-        )  # Update styles to reflect the initial selection
+        self.label.setStyleSheet(
+            """
+                QLabel {
+                    font-family: 'Arial';
+                    border: none;
+                    font-size: 16px;
+                }
+            """
+        )
+        self.label.setContentsMargins(0, 0, 0, 0)
 
         self.label.setOpenExternalLinks(False)  # Prevent default link behavior
         self.label.setTextInteractionFlags(
@@ -251,20 +347,63 @@ class DropArea(QWidget):
         self.label.linkActivated.connect(self.handle_link_activated)
 
         self.label.setAlignment(Qt.AlignCenter)
-        self.label.setStyleSheet(
+
+        # Image selection list frame
+        self.image_sel_frame = QLabel()
+        self.image_sel_frame.setStyleSheet("border:none")
+        self.image_sel_grid_layout = QGridLayout(self.image_sel_frame)
+
+        # Process Now button
+        self.process_now_btn = QPushButton("Process Now")
+        self.process_now_btn.setStyleSheet(
+            """
+            QPushButton {
+                    background-color: #0372CD;  /* Selected color */
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                }
+            """
+        )
+        self.process_now_btn.setFixedWidth(250)
+        self.process_now_btn.clicked.connect(self.process_units)
+
+        self.label_frame = QLabel()
+        self.label_frame.setMinimumSize(300, 400)
+        label_vbox_layout = QVBoxLayout(self.label_frame)
+        label_vbox_layout.addWidget(self.label)
+        label_vbox_layout.addWidget(self.image_sel_frame)
+        label_vbox_layout.addWidget(self.process_now_btn)
+        label_vbox_layout.setAlignment(
+            self.process_now_btn, Qt.AlignHCenter | Qt.AlignVCenter
+        )
+        self.label_frame.setStyleSheet(
             """
                 QLabel {
-                    background-color: rgba(238, 183, 58, 0);
-                    font-family: 'Arial';
-                    font-size: 20px;
+                    background-color: rgba(0, 0, 0, 0);
                     border: 2px dashed white;
                     border-radius: 10px
                 }
             """
         )
-        main_layout.addWidget(self.label)  # Add the label to the main layout
+
+        main_layout.addStretch(1)
+        main_layout.addWidget(self.label_frame)
+
+        # Set the initial selection to JPEG
+        # Update styles to reflect the initial selection
+        self.update_button_styles("JPEG")
+        self.process_now_btn.hide()
 
         self.setLayout(main_layout)  # Set the main layout for the DropArea
+
+        self.setAcceptDrops(True)
+
+    def clear_layout(self, layout):
+        while layout.count() > 0:
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
     def update_button_styles(self, selected_button):
         if selected_button == "JPEG":
@@ -302,7 +441,10 @@ class DropArea(QWidget):
         )
 
         # Apply selected style if the button is checked
+        self.process_now_btn.hide()
+        self.clear_layout(self.image_sel_grid_layout)
         if self.is_jpg:
+            self.image_sel_frame.hide()
             self.jpg_button.setStyleSheet(
                 """
                 QPushButton {
@@ -324,6 +466,7 @@ class DropArea(QWidget):
                 """
             )
         else:
+            self.image_sel_frame.hide()
             self.gif_button.setStyleSheet(
                 """
                 QPushButton {
@@ -346,16 +489,18 @@ class DropArea(QWidget):
             )
 
     def handle_link_activated(self, link):
-        if link == "process_image":
-            dialog = NumberOfCopiesDialog(self)
-            if dialog.exec_() == QDialog.Accepted:
-                self.num_copies = dialog.get_number_of_copies()
-                if self.num_copies is not None:
-                    print(f"Number of copies to save: {self.num_copies}")
-                else:
-                    self.num_copies = 1
-                    print("Invalid number of copies")
-        elif link == "desktop_path":
+        # if link == "process_image":
+        #     dialog = NumberOfCopiesDialog(self)
+        #     if dialog.exec_() == QDialog.Accepted:
+        #         self.num_copies_comp.num_copies = dialog.get_number_of_copies()
+        #         if self.num_copies_comp.num_copies is not None:
+        #             print(
+        #                 f"Number of copies to save: {self.num_copies_comp.num_copies}"
+        #             )
+        #         else:
+        #             self.num_copies_comp.num_copies = 1
+        #             print("Invalid number of copies")
+        if link == "desktop_path":
             self.folder = QFileDialog.getExistingDirectory(
                 self, "Select Directory", self.folder
             )
@@ -364,11 +509,11 @@ class DropArea(QWidget):
             else:
                 self.folder = "D:\\"
 
-        copy_text = "copy" if self.num_copies == 1 else "copies"
+        copy_text = "copy" if self.num_copies_comp.num_copies == 1 else "copies"
         self.label.setText(
             f"""
             Drag and drop GIF image to be processed here.<br><br>
-            <a href="process_image">{self.num_copies} {copy_text}</a> of processed image will be saved in:<br><br>
+            <a href="process_image">{self.num_copies_comp.num_copies} {copy_text}</a> of processed image will be saved in:<br><br>
             <a href="desktop_path">{self.folder}</a>
             """
         )
@@ -376,37 +521,83 @@ class DropArea(QWidget):
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
             url = event.mimeData().urls()[0]
-            if url.toLocalFile().lower().endswith(
-                ".gif"
-            ) or url.toLocalFile().lower().endswith(".jpg"):
+            url = url.toLocalFile().lower()
+            if (url.endswith(".gif") and not self.is_jpg) or (
+                imghdr.what(url) is not None and self.is_jpg
+            ):
                 event.acceptProposedAction()
-                self.label.setStyleSheet(
-                    f"background-color: white; border: 2px dashed dimgray; border-radius: 10px; font-family: 'Arial'; font-size: 20px;"
+                self.label_frame.setStyleSheet(
+                    f"background-color: white; border: 2px dashed white; border-radius: 10px; font-family: 'Arial'; font-size: 20px;"
                 )
+                self.label.hide()
+                if not url.endswith(".gif"):
+                    self.image_sel_frame.show()
+                    self.process_now_btn.show()
                 return
-        # self.label.setStyleSheet(f"background-color: {QColor(238, 183, 58).name()}; border: 2px dashed dimgray; border-radius: 10px")
+
         event.ignore()
 
     def dragLeaveEvent(self, event):
-        self.label.setStyleSheet(
-            f"background-color: {QColor(238, 183, 58).name()}; border: 2px dashed dimgray; border-radius: 10px; font-family: 'Arial'; font-size: 20px;"
+        self.label_frame.setStyleSheet(
+            f"background-color: rgba(0, 0, 58, 0); border: 2px dashed white; border-radius: 10px; font-family: 'Arial'; font-size: 20px;"
         )
+        self.label.show()
 
-    def updateMovie(self, thread_obj, gif_path):
+    def updateMovie_v1(self, thread_obj, gif_path):
         self.gif_movie = QMovie(gif_path)
-        self.gif_movie.setScaledSize(self.label.size())
+        self.gif_movie.setScaledSize(self.label_frame.size())
+        self.label.setMovie(self.gif_movie)
+        self.gif_movie.start()
+    
+    def updateMovie(self, thread_obj, gif_path):
+        # Load the GIF using Pillow to get original dimensions
+        with Image.open(gif_path) as img:
+            original_size = img.size  # (width, height)
+        
+        print(original_size)
+
+        # Calculate scaled size while maintaining aspect ratio
+        scaled_size = self.calculate_fit_size(original_size, self.label_frame.size())
+
+        # Create a QMovie and set its scaled size
+        self.gif_movie = QMovie(gif_path)
+        self.gif_movie.setScaledSize(scaled_size)  # Set the scaled size for the movie
         self.label.setMovie(self.gif_movie)
         self.gif_movie.start()
 
-    def dropEvent(self, event: QDropEvent):
-        file_paths = [url.toLocalFile() for url in event.mimeData().urls()]
-        # self.processGif(files[0])
-        # gif_path = file_paths[0]
-        # self.updateMovie(gif_path)
-        # process gif file
-        num_copies = self.num_copies
-        # For demo purposes, I'm setting some default values
-        folder = self.folder
+    def calculate_fit_size(self, original_size, target_size):
+        """Calculate a new size to fit within target size while maintaining aspect ratio."""
+        original_width, original_height = original_size
+
+        if original_width == 0 or original_height == 0:
+            return QSize(0, 0)  # Handle invalid size
+        
+        # Calculate scaling factors
+        width_ratio = target_size.width() / original_width
+        height_ratio = target_size.height() / original_height
+        
+        # Use the smaller ratio to ensure it fits within the target size
+        scale_ratio = min(width_ratio, height_ratio)
+
+        # Calculate new dimensions
+        new_width = int(original_width * scale_ratio)
+        new_height = int(original_height * scale_ratio)
+
+        return QSize(new_width, new_height)
+
+    def display_static_image(self, image_path):
+        """Display a static image."""
+        pixmap = QPixmap(image_path)
+        self.label.setPixmap(
+            pixmap.scaled(
+                self.label.size(),
+                aspectRatioMode=Qt.KeepAspectRatio,
+                transformMode=Qt.SmoothTransformation,
+            )
+        )
+
+    def process_units(self):
+        print("processing units...")
         # Get user parameters
         lpi = 40.07
         actual_lpi = 40
@@ -422,12 +613,19 @@ class DropArea(QWidget):
         right_margin_in = 0.25
         bottom_margin_in = 0.25
 
+        if self.is_jpg:
+            self.file_paths = []
+            for i in range(self.image_sel_grid_layout.count()):
+                item = self.image_sel_grid_layout.itemAt(i)
+                if item.widget() and isinstance(item.widget(), ImagePanel):
+                    self.file_paths.append(item.widget().file_path)
+
         # Start processing in a new thread
         self.processing_thread = GifProcessingThread(
             self.label,
-            file_paths,
-            num_copies,
-            folder,
+            self.file_paths,
+            self.num_copies_comp.num_copies,
+            self.folder,
             lpi,
             actual_lpi,
             width_in,
@@ -442,7 +640,47 @@ class DropArea(QWidget):
         )
         self.processing_thread.processing_finished.connect(self.on_processing_finished)
         self.processing_thread.update_movie.connect(self.updateMovie)
+        self.processing_thread.update_image.connect(self.display_static_image)
         self.processing_thread.start()
+
+    def dropEvent(self, event: QDropEvent):
+        self.label_frame.setStyleSheet(
+            f"background-color: rgba(0, 0, 58, 0); border: 2px dashed white; border-radius: 10px; font-family: 'Arial'; font-size: 20px;"
+        )
+        self.label.show()
+
+        self.file_paths = [url.toLocalFile() for url in event.mimeData().urls()]
+        # self.processGif(files[0])
+        # gif_path = self.file_paths[0]
+        # self.updateMovie(gif_path)
+
+        if not self.is_jpg:
+            self.process_units()
+        else:
+            for url in self.file_paths:
+                self.addImagePanel(url)
+
+    def addImagePanel(self, file_path):
+
+        # Check for duplicates
+        for i in range(self.image_sel_grid_layout.count()):
+            item = self.image_sel_grid_layout.itemAt(i)
+            if item.widget() and isinstance(item.widget(), ImagePanel):
+                if item.widget().file_path == file_path:
+                    return
+
+        # If no duplicates, proceed to add the new panel
+        panel = ImagePanel(file_path)
+        current_count = self.image_sel_grid_layout.count()
+
+        # Define maximum rows and columns
+        max_rows = 2
+        max_columns = 4
+
+        if current_count < max_rows * max_columns:
+            row = current_count // max_columns
+            column = current_count % max_columns
+            self.image_sel_grid_layout.addWidget(panel, row, column)
 
     def reset(self):
         # Stop any GIF animation
@@ -452,18 +690,18 @@ class DropArea(QWidget):
             delattr(self, "gif_movie")
 
         self.setAcceptDrops(True)
-        self.label.setStyleSheet(
-            f"background-color: {QColor(238, 183, 58).name()}; border: 2px dashed dimgray; border-radius: 10px; font-family: 'Arial'; font-size: 20px;"
+        self.label_frame.setStyleSheet(
+            f"background-color: rgba(0, 0, 58, 0); border: 2px dashed white; border-radius: 10px; font-family: 'Arial'; font-size: 20px;"
         )
         # self.setFixedSize(460, 460)
 
         # Reset the label to its original state
         # self.label.clear()
-        copy_text = "copy" if self.num_copies == 1 else "copies"
+        copy_text = "copy" if self.num_copies_comp.num_copies == 1 else "copies"
         self.label.setText(
             f"""
             Drag and drop GIF image to be processed here.<br><br>
-            <a href="process_image">{self.num_copies} {copy_text}</a> of processed image will be saved in:<br><br>
+            <a href="process_image">{self.num_copies_comp.num_copies} {copy_text}</a> of processed image will be saved in:<br><br>
             <a href="desktop_path">{self.folder}</a>
             """
         )
@@ -477,7 +715,7 @@ class DropArea(QWidget):
             asyncio.run(
                 self.show_notification(
                     "GIF Prcessing completed",
-                    f"Processed image saved successfully (x{self.num_copies}). Time taken: {processing_time:.2f} seconds.",
+                    f"Processed image saved successfully (x{self.num_copies_comp.num_copies}). Time taken: {processing_time:.2f} seconds.",
                 )
             )
 
@@ -746,6 +984,7 @@ class GifProcessingThread(QThread):
         object, float
     )  # Signal to notify when processing is finished
     update_movie = pyqtSignal(object, str)
+    update_image = pyqtSignal(object, str)
 
     def __init__(
         self,
@@ -766,6 +1005,7 @@ class GifProcessingThread(QThread):
         bottom_margin_in,
     ):
         super().__init__()
+        self.logger = logging.getLogger(__name__)
         self.label = label
         self.file_paths = file_paths
         self.num_copies = num_copies
@@ -781,10 +1021,34 @@ class GifProcessingThread(QThread):
         self.left_margin_in = left_margin_in
         self.right_margin_in = right_margin_in
         self.bottom_margin_in = bottom_margin_in
+        self.current_image_index = 0
+        self.image_display_timer = None
+
+    def setup_timer(self):
+        self.logger.info("Setting up timer!")
+        self.image_display_timer = QTimer()
+        self.image_display_timer.timeout.connect(self.show_next_image)
+        self.image_display_timer.start(300)
+
+    def stop_timer(self):
+        if self.image_display_timer:
+            self.image_display_timer.stop()
+            self.logger.info("Timer stopped.")
+
+    def show_next_image(self):
+        self.logger.info(f"Current file paths: {self.file_paths}")
+        self.logger.info(f"Current image index: {self.current_image_index}")
+
+        if self.current_image_index < len(self.file_paths):
+            self.update_image.emit(self, self.file_paths[self.current_image_index])
+            self.current_image_index += 1
+        else:
+            self.stop_timer()
 
     def run(self):
         try:
             start_time = time.time()
+            self.setup_timer()
 
             if len(self.file_paths) == 1:
                 if not self.file_paths[0].lower().endswith(".gif"):
@@ -797,7 +1061,9 @@ class GifProcessingThread(QThread):
                     if file_path.lower().endswith(".gif"):
                         self.processing_finished.emit(self, 0)
                         return
-                self.update_movie.emit(self, self.file_paths[0])
+                self.current_image_index = 0
+                self.image_display_timer.start(300)
+                self.logger.info("Timer started.")
 
             print("Process Started")
 
@@ -1044,7 +1310,8 @@ class GifProcessingThread(QThread):
             self.processing_finished.emit(self, processing_time)
 
         except Exception as e:
-            self.show_error_message(str(e))
+            print(e.args[0])
+            self.show_error_message(str(e.args[0]))
 
     def show_error_message(self, error_message):
         msg_box = QMessageBox()
