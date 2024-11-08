@@ -363,6 +363,9 @@ class DropArea(QWidget):
                     border: none;
                     border-radius: 8px;
                 }
+            QPushButton:hover {
+                background-color: #4A6FA3;
+            }
             """
         )
         self.process_now_btn.setFixedWidth(250)
@@ -513,7 +516,7 @@ class DropArea(QWidget):
         self.label.setText(
             f"""
             Drag and drop GIF image to be processed here.<br><br>
-            <a href="process_image">{self.num_copies_comp.num_copies} {copy_text}</a> of processed image will be saved in:<br><br>
+            Processed Image will be saved in:<br><br>
             <a href="desktop_path">{self.folder}</a>
             """
         )
@@ -523,7 +526,7 @@ class DropArea(QWidget):
             url = event.mimeData().urls()[0]
             url = url.toLocalFile().lower()
             if (url.endswith(".gif") and not self.is_jpg) or (
-                imghdr.what(url) is not None and self.is_jpg
+                imghdr.what(url) is not None and not url.endswith(".gif") and self.is_jpg
             ):
                 event.acceptProposedAction()
                 self.label_frame.setStyleSheet(
@@ -701,7 +704,7 @@ class DropArea(QWidget):
         self.label.setText(
             f"""
             Drag and drop GIF image to be processed here.<br><br>
-            <a href="process_image">{self.num_copies_comp.num_copies} {copy_text}</a> of processed image will be saved in:<br><br>
+            Processed Image will be saved in:<br><br>
             <a href="desktop_path">{self.folder}</a>
             """
         )
@@ -715,7 +718,7 @@ class DropArea(QWidget):
             asyncio.run(
                 self.show_notification(
                     "GIF Prcessing completed",
-                    f"Processed image saved successfully (x{self.num_copies_comp.num_copies}). Time taken: {processing_time:.2f} seconds.",
+                    f"Processed Image saved successfully (x{self.num_copies_comp.num_copies}). Time taken: {processing_time:.2f} seconds.",
                 )
             )
 
@@ -731,7 +734,7 @@ class DropArea(QWidget):
                 icon="C:\\ProgramData\\app_icon.ico",
             )
             toast.add_actions(
-                label="Visit Holograil", launch="https://www.theholograil.com"
+                label="Visit Holograil", launch="https://www.thegrail.app"
             )
             toast.set_audio(audio.Mail, loop=False)
             toast.show()
@@ -761,7 +764,7 @@ class DropArea(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowIcon(QIcon("app_icon.ico"))
+        self.setWindowIcon(QIcon("C:\\ProgramData\\app_icon.ico"))
 
         self.setWindowTitle("TheGrail")
         self.setGeometry(100, 100, 800, 800)
@@ -778,7 +781,7 @@ class MainWindow(QMainWindow):
 
         # Create label for logo
         logo_label = QLabel()
-        pixmap = QPixmap("./resources/logo.png")
+        pixmap = QPixmap("C:\\ProgramData\\logo.png")
         scaled_pixmap = pixmap.scaled(
             200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation
         )
@@ -909,7 +912,7 @@ class MainWindow(QMainWindow):
 
         # Left image
         left_label = QLabel()
-        left_pixmap = QPixmap("./resources/left.png")
+        left_pixmap = QPixmap("C:\\ProgramData\\left.png")
         scaled_left = left_pixmap.scaled(
             230, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation
         )
@@ -917,7 +920,7 @@ class MainWindow(QMainWindow):
 
         # Right image
         right_label = QLabel()
-        right_pixmap = QPixmap("./resources/right.png")
+        right_pixmap = QPixmap("C:\\ProgramData\\right.png")
         scaled_right = right_pixmap.scaled(
             230, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation
         )
@@ -1332,4 +1335,7 @@ def main():
 
 if __name__ == "__main__":
     shutil.copyfile("./app_icon.ico", "C:\\ProgramData\\app_icon.ico")
+    shutil.copyfile("./resources/left.png", "C:\\ProgramData\\left.png")
+    shutil.copyfile("./resources/logo.png", "C:\\ProgramData\\logo.png")
+    shutil.copyfile("./resources/right.png", "C:\\ProgramData\\right.png")
     main()
