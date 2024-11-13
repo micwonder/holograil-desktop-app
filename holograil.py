@@ -20,6 +20,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QColor, QIcon, QFont, QMovie
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize
 from PyQt5.QtGui import (
+    QIntValidator,
     QPalette,
     QDragEnterEvent,
     QDropEvent,
@@ -54,8 +55,9 @@ import requests
 # Configure the logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s [Thread: %(threadName)s | ID: %(thread)d]'
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s [Thread: %(threadName)s | ID: %(thread)d]",
 )
+
 
 class NumberOfCopiesDialog(QDialog):
     def __init__(self, parent=None):
@@ -158,17 +160,19 @@ class ImageCountNumberComponent(QWidget):
         """
         )
         # self.decrement_button.setFixedSize(32, 32)
-        self.num_copies_label = QLabel(str(self.num_copies))
-        self.num_copies_label.setStyleSheet(
+        self.num_copies_input = QLineEdit(str(self.num_copies))
+        self.num_copies_input.setStyleSheet(
             """
-                                            QLabel {
+                                            QLineEdit {
                                                 color: #2B4099;
-                                            font-family: 'Arial';
+                                                font-family: 'Arial';
+                                                text-align: center;
+                                                font-size: 16px;
                                             }
                                             """
         )
-        # self.num_copies_label.setFixedSize(32, 32)
-        self.num_copies_label.setAlignment(Qt.AlignCenter)
+        # self.num_copies_input.setFixedSize(32, 32)
+        self.num_copies_input.setAlignment(Qt.AlignCenter)
         self.increment_button = QPushButton(text="+")
         self.increment_button.setStyleSheet(
             """
@@ -193,6 +197,10 @@ class ImageCountNumberComponent(QWidget):
         # Connect to a method to handle decrement, increment
         self.decrement_button.clicked.connect(self.decrement_copies)
         self.increment_button.clicked.connect(self.increment_copies)
+        self.num_copies_input.textChanged.connect(self.sync_with_label)
+        onlyInt = QIntValidator()
+        onlyInt.setRange(0, 99)
+        self.num_copies_input.setValidator(onlyInt)
 
         # Create a horizontal layout
         hbox_layout = QHBoxLayout(self.container)
@@ -202,7 +210,7 @@ class ImageCountNumberComponent(QWidget):
             QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
         )
         hbox_layout.addWidget(self.decrement_button)
-        hbox_layout.addWidget(self.num_copies_label)
+        hbox_layout.addWidget(self.num_copies_input)
         hbox_layout.addWidget(self.increment_button)
         hbox_layout.addSpacerItem(
             QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
@@ -217,15 +225,21 @@ class ImageCountNumberComponent(QWidget):
     def decrement_copies(self):
         if self.num_copies > 1:  # Ensure the number of copies does not go below 1
             self.num_copies -= 1
-            self.num_copies_label.setText(
-                str(self.num_copies)
-            )  # Update the label to reflect the new number
+            self.update_display()
 
     def increment_copies(self):
-        self.num_copies += 1  # Increment the number of copies
-        self.num_copies_label.setText(
-            str(self.num_copies)
-        )  # Update the label to reflect the new number
+        if self.num_copies < 99:
+            self.num_copies += 1  # Increment the number of copies
+            self.update_display()
+
+    def update_display(self):
+        self.num_copies_input.setText(str(self.num_copies))
+
+    def sync_with_label(self):
+        text = self.num_copies_input.text()
+        value = int(text)
+        if 0 <= value <= 99:
+            self.num_copies = value
 
 
 class ImagePanel(QWidget):
@@ -355,6 +369,7 @@ class DropArea(QWidget):
 
         # Process Now button
         self.process_now_btn = QPushButton("Process Now")
+        self.clear_all_btn = QPushButton("Clear All")
         self.process_now_btn.setStyleSheet(
             """
             QPushButton {
@@ -368,15 +383,38 @@ class DropArea(QWidget):
             }
             """
         )
-        self.process_now_btn.setFixedWidth(250)
+        self.clear_all_btn.setStyleSheet(
+            """
+            QPushButton {
+                    background-color: #595959;  /* Selected color */
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                }
+            QPushButton:hover {
+                background-color: #898989;
+            }
+            """
+        )
+        self.process_now_btn.setFixedWidth(200)
+        self.clear_all_btn.setFixedWidth(200)
         self.process_now_btn.clicked.connect(self.process_units)
+        self.clear_all_btn.clicked.connect(self.clear_layout)
 
         self.label_frame = QLabel()
         self.label_frame.setMinimumSize(300, 400)
         label_vbox_layout = QVBoxLayout(self.label_frame)
         label_vbox_layout.addWidget(self.label)
         label_vbox_layout.addWidget(self.image_sel_frame)
-        label_vbox_layout.addWidget(self.process_now_btn)
+
+        process_hbox_layout = QHBoxLayout()
+        process_hbox_layout.addStretch(1)
+        process_hbox_layout.addWidget(self.clear_all_btn)
+        process_hbox_layout.addWidget(self.process_now_btn)
+        process_hbox_layout.addStretch(1)
+        process_hbox_layout.setSpacing(20)
+        label_vbox_layout.addLayout(process_hbox_layout)
+
         label_vbox_layout.setAlignment(
             self.process_now_btn, Qt.AlignHCenter | Qt.AlignVCenter
         )
@@ -397,18 +435,21 @@ class DropArea(QWidget):
         # Update styles to reflect the initial selection
         self.update_button_styles("JPEG")
         self.process_now_btn.hide()
+        self.clear_all_btn.hide()
 
         self.setLayout(main_layout)  # Set the main layout for the DropArea
 
         self.setAcceptDrops(True)
 
-    def clear_layout(self, layout):
+    def clear_layout(self):
+        layout = self.image_sel_grid_layout
         while layout.count() > 0:
             item = layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
     def update_button_styles(self, selected_button):
+        self.setDisableProcessNow(False)
         if selected_button == "JPEG":
             self.is_jpg = True
 
@@ -445,7 +486,8 @@ class DropArea(QWidget):
 
         # Apply selected style if the button is checked
         self.process_now_btn.hide()
-        self.clear_layout(self.image_sel_grid_layout)
+        self.clear_all_btn.hide()
+        self.clear_layout()
         if self.is_jpg:
             self.image_sel_frame.hide()
             self.jpg_button.setStyleSheet(
@@ -526,7 +568,9 @@ class DropArea(QWidget):
             url = event.mimeData().urls()[0]
             url = url.toLocalFile().lower()
             if (url.endswith(".gif") and not self.is_jpg) or (
-                imghdr.what(url) is not None and not url.endswith(".gif") and self.is_jpg
+                imghdr.what(url) is not None
+                and not url.endswith(".gif")
+                and self.is_jpg
             ):
                 event.acceptProposedAction()
                 self.label_frame.setStyleSheet(
@@ -536,6 +580,7 @@ class DropArea(QWidget):
                 if not url.endswith(".gif"):
                     self.image_sel_frame.show()
                     self.process_now_btn.show()
+                    self.clear_all_btn.show()
                 return
 
         event.ignore()
@@ -551,12 +596,12 @@ class DropArea(QWidget):
         self.gif_movie.setScaledSize(self.label_frame.size())
         self.label.setMovie(self.gif_movie)
         self.gif_movie.start()
-    
+
     def updateMovie(self, thread_obj, gif_path):
         # Load the GIF using Pillow to get original dimensions
         with Image.open(gif_path) as img:
             original_size = img.size  # (width, height)
-        
+
         print(original_size)
 
         # Calculate scaled size while maintaining aspect ratio
@@ -574,11 +619,11 @@ class DropArea(QWidget):
 
         if original_width == 0 or original_height == 0:
             return QSize(0, 0)  # Handle invalid size
-        
+
         # Calculate scaling factors
         width_ratio = target_size.width() / original_width
         height_ratio = target_size.height() / original_height
-        
+
         # Use the smaller ratio to ensure it fits within the target size
         scale_ratio = min(width_ratio, height_ratio)
 
@@ -599,8 +644,39 @@ class DropArea(QWidget):
             )
         )
 
+    def setDisableProcessNow(self, flag: bool):
+        self.process_now_btn.setDisabled(flag)
+        if flag:
+            self.process_now_btn.setStyleSheet(
+                """
+                QPushButton {
+                        background-color: #898989;  /* Selected color */
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                    }
+                """
+            )
+        else:
+            self.process_now_btn.setStyleSheet(
+                """
+                QPushButton {
+                        background-color: #0372CD;  /* Selected color */
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                    }
+                QPushButton:hover {
+                    background-color: #4A6FA3;
+                }
+                """
+            )
+
     def process_units(self):
         print("processing units...")
+
+        self.setDisableProcessNow(True)
+
         # Get user parameters
         lpi = 40.07
         actual_lpi = 40
@@ -645,6 +721,8 @@ class DropArea(QWidget):
         self.processing_thread.update_movie.connect(self.updateMovie)
         self.processing_thread.update_image.connect(self.display_static_image)
         self.processing_thread.start()
+
+        self.setDisableProcessNow(False)
 
     def dropEvent(self, event: QDropEvent):
         self.label_frame.setStyleSheet(
