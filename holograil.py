@@ -1041,17 +1041,28 @@ class MainWindow(QMainWindow):
             self.meaning_area_widget.hide()
             self.drop_area.show()
 
+    def show_error_message(self, error_message):
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Critical)
+        msg_box.setWindowTitle("Error")
+        msg_box.setText("An error occurred:")
+        msg_box.setInformativeText(error_message)
+        msg_box.setStandardButtons(QMessageBox.Ok)
+        msg_box.exec_()
     def compare_license(self, input):
-        mac_address = get_mac_address()
-        url = "http://ec2-52-90-200-142.compute-1.amazonaws.com/subscriptions/validate-license"
-        params = {
-            "license_key": input,
-            "device_address": mac_address,
-        }
-        response = requests.post(url, params=params)
-
-        return True
-        return response.status_code == 200
+        try:
+            mac_address = get_mac_address()
+            url = "http://ec2-52-90-200-142.compute-1.amazonaws.com:8089/subscriptions/validate-license"
+            params = {
+                "license_key": input,
+                "device_address": mac_address,
+            }
+            response = requests.post(url, params=params, timeout=3)
+            return response.status_code == 200
+        except Exception as e:
+            self.show_error_message(str(e.args[0]))
+        return False
+        # return True
 
     def create_gradient_palette(self, gradient):
         palette = QPalette()
