@@ -1049,16 +1049,19 @@ class MainWindow(QMainWindow):
         msg_box.setInformativeText(error_message)
         msg_box.setStandardButtons(QMessageBox.Ok)
         msg_box.exec_()
+
     def compare_license(self, input):
         try:
             mac_address = get_mac_address()
-            url = "http://ec2-52-90-200-142.compute-1.amazonaws.com:8089/subscriptions/validate-license"
+            url = "http://ec2-52-90-200-142.compute-1.amazonaws.com:8088/subscriptions/validate-license"
             params = {
                 "license_key": input,
                 "device_address": mac_address,
             }
             response = requests.post(url, params=params, timeout=3)
-            return response.status_code == 200
+            response.raise_for_status()
+            # return response.status_code == 200
+            return True
         except Exception as e:
             self.show_error_message(str(e.args[0]))
         return False
